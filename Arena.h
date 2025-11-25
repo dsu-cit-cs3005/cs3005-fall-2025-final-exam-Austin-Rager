@@ -19,6 +19,7 @@ class Arena {
 
     public:
     Arena();
+    virtual ~Arena();
     void load_config(std::string fileName);
     void place_obstacles();
     void display();
