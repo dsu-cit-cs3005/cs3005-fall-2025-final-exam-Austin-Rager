@@ -1,0 +1,7 @@
+arena_rows 20
+arena_cols 20
+num_mounds 5
+num_pits 3
+num_flamethrowers 4
+max_rounds 100
+watch_live true 
