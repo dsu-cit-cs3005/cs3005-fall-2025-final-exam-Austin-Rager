@@ -28,6 +28,7 @@ class Arena {
     void place_obstacles();
     void display();
     void load_all_robots();
+    void cleanup();
 
     private:
     bool cellEmpty(int& row, int& col);
@@ -36,4 +37,5 @@ class Arena {
     std::string compileRobot(const std::string& fileName);
     RobotBase* loadRobot(const std::string& sharedLib);
     void setupRobot(RobotBase* robot, int index);
+    RobotBase* findRobotAt(int row, int col);
 };

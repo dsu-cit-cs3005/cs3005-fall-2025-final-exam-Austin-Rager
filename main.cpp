@@ -14,7 +14,10 @@ int main(){
     Arena arena;
     arena.load_config("config.txt");
     arena.place_obstacles();
+    arena.load_all_robots();
     arena.display();
+
+    arena.cleanup();
 
     return 0;
 }

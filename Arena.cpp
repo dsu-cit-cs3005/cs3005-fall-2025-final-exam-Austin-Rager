@@ -102,20 +102,36 @@ void Arena::place_obstacles(){
     }
 }
 
-void Arena::display(){
+void Arena::display() {
+    // Print column headers
     std::cout << "   ";
-    for (int column = 0; column < arenaWidth; column++){
+    for (int column = 0; column < arenaWidth; column++) {
         std::cout << std::setw(3) << std::right << column; 
     }
     std::cout << "\n";
     std::cout << std::endl;
 
-    for (int row = 0; row < arenaHeight; row++){
+    // Print each row
+    for (int row = 0; row < arenaHeight; row++) {
         std::cout << std::setw(2) << std::right << row;
         std::cout << "  ";
 
-        for (int col = 0; col < arenaWidth; col++){
-            std::cout << std::setw(3) << std::right << grid[row][col];
+        for (int col = 0; col < arenaWidth; col++) {
+            RobotBase* robot = findRobotAt(row, col);
+            
+            if (robot != nullptr) {
+                // Robot found at this cell
+                if (robot->get_health() > 0) {
+                    // Living robot: print "R" + character
+                    std::cout << " R" << robot->m_character;
+                } else {
+                    // Dead robot: print "X" + character
+                    std::cout << " X" << robot->m_character;
+                }
+            } else {
+                // No robot, print terrain
+                std::cout << std::setw(3) << std::right << grid[row][col];
+            }
         }
 
         std::cout << "\n";
@@ -205,12 +221,57 @@ void Arena::setupRobot(RobotBase* robot, int index){
     std::string characters = "@#$%&!*^~+";
     robot->m_character = characters[index % characters.length()];
 
+    int row, col;
+     
     do{
-        int row = rand();
-        int col = rand();
+        row = rand();
+        col = rand();
     }
 
-    while (cellEmpty(row, col)){
+    while (cellEmpty(row, col));{
+        robot->move_to(row,col);
+        std::cout << "Loaded robot: " << robot->m_name << " at (" << row << ", " << col << ")\n";
+    }
+}
 
+void Arena::load_all_robots(){
+    std::cout << "Loading robots...\n";
+    std::vector<std::string> robot_files = find_robot_files();
+
+    for (const auto& filename : robot_files){
+        std::string shared_lib = compileRobot(filename);
+        if (shared_lib.empty()){
+            continue;
+        }
+        RobotBase* robot = loadRobot(shared_lib);
+        if (robot == nullptr){
+            continue;
+        }
+
+        setupRobot(robot, robots.size());
+        robots.push_back(robot);
+    }
+    std::cout << "Loaded " << robots.size() << "robots\n";
+}
+
+RobotBase* Arena::findRobotAt(int row, int col){
+    for (const auto& robot : robots){
+        int robotRow, robotCol;
+        robot->get_current_location(robotRow, robotCol);
+
+        if (robotRow == row && robotCol == col){
+            return robot;
+        }
+    }
+    return nullptr;
+}
+
+void Arena::cleanup(){
+    for (const auto robot : robots){
+        delete robot;
+    }
+
+    for (const auto handle : robot_handles){
+        dlclose(handle);
     }
 }
