@@ -5,8 +5,12 @@
 #include <cstdlib>
 #include <ctime>
 #include <iomanip>
+#include <dlfcn.h>
+#include <filesystem>
 #include "RobotBase.h"
 #include "Arena.h"
+
+namespace fs = std::filesystem;
 
 Arena::Arena(){};
 
@@ -116,4 +120,37 @@ void Arena::display(){
 
         std::cout << "\n";
     }
+}
+
+std::vector<std::string> Arena::find_robot_files(){
+    std::vector<std::string> filenames;
+
+    for (const auto& entry : fs::directory_iterator(".")){
+        if (entry.is_regular_file()){
+            std::string filename = entry.path().filename().string();
+            if (filename.starts_with("Robot_") && filename.ends_with(".cpp")){
+                filenames.push_back(filename);
+            }
+        }
+    }
+    return filenames;
+}
+
+bool Arena::matches_robot_pattern(std::string filename){
+    if (filename.length() < 11){
+        return false;
+    }
+    else if (filename.substr(0, 6) != "Robot_"){
+        return false;
+    }
+    else if (filename.substr(filename.length() - 4) != ".cpp"){
+        return false;
+    }
+    else{
+        return true;
+    }
+}
+
+std::string compileRobot(const std::string& fileName){
+    std::string robotName = fileName.substr(6, fileName.size() - 4);
 }
