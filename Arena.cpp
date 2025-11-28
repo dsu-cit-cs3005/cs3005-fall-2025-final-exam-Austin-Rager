@@ -151,6 +151,66 @@ bool Arena::matches_robot_pattern(std::string filename){
     }
 }
 
-std::string compileRobot(const std::string& fileName){
-    std::string robotName = fileName.substr(6, fileName.size() - 4);
+std::string Arena::compileRobot(const std::string& fileName){
+    std::string robotName = fileName.substr(3, fileName.size() - 6);
+
+    std::string sharedLib = std::string("lib") + robotName + ".so";
+
+    const std::string compileCMD = std::string("g++ -shared -fPIC -o ") + sharedLib + " " + fileName + " RobotBase.o -I. -std=c++20";
+
+    std::cout << "Compiling" + fileName + "...\n";
+
+    int result = system(compileCMD.c_str());
+
+    if (result != 0){
+        std::cout << "Error";
+        return "";
+    }
+
+    return sharedLib;
+}
+
+RobotBase* Arena::loadRobot(const std::string& sharedLib){
+    void* handle = dlopen(sharedLib.c_str(), RTLD_LAZY);
+    if (!handle){
+        std::cout << "Error loading library: " << dlerror() << std::endl;
+        return nullptr;
+    }
+
+    void* sym = dlsym(handle, "createRobot");
+
+    if (sym == nullptr){
+        std::cout << dlerror() <<std::endl;
+        dlclose(handle);
+        return nullptr;
+    }
+    typedef RobotBase* (*CreateRobotFunc)();
+    CreateRobotFunc createRobot = reinterpret_cast<CreateRobotFunc>(sym);
+
+    RobotBase* robot = createRobot();
+
+    if (robot == nullptr){
+        std::cout << "Error creating robot." << std::endl;
+        dlclose(handle);
+        return nullptr;
+    }
+
+    robot_handles.push_back(handle);
+    return robot;
+}
+
+void Arena::setupRobot(RobotBase* robot, int index){
+    robot->set_boundaries(20,20);
+
+    std::string characters = "@#$%&!*^~+";
+    robot->m_character = characters[index % characters.length()];
+
+    do{
+        int row = rand();
+        int col = rand();
+    }
+
+    while (cellEmpty(row, col)){
+
+    }
 }
