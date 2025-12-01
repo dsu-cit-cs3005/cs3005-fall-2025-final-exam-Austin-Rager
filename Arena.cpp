@@ -168,13 +168,13 @@ bool Arena::matches_robot_pattern(std::string filename){
 }
 
 std::string Arena::compileRobot(const std::string& fileName){
-    std::string robotName = fileName.substr(3, fileName.size() - 6);
+    std::string robotName = fileName.substr(6, fileName.size() - 10);
 
     std::string sharedLib = std::string("lib") + robotName + ".so";
 
     const std::string compileCMD = std::string("g++ -shared -fPIC -o ") + sharedLib + " " + fileName + " RobotBase.o -I. -std=c++20";
 
-    std::cout << "Compiling" + fileName + "...\n";
+    std::cout << "Compiling " + fileName + "...\n";
 
     int result = system(compileCMD.c_str());
 
@@ -187,13 +187,14 @@ std::string Arena::compileRobot(const std::string& fileName){
 }
 
 RobotBase* Arena::loadRobot(const std::string& sharedLib){
-    void* handle = dlopen(sharedLib.c_str(), RTLD_LAZY);
+    std::string fullPath = "./" + sharedLib;
+    void* handle = dlopen(fullPath.c_str(), RTLD_LAZY);
     if (!handle){
         std::cout << "Error loading library: " << dlerror() << std::endl;
         return nullptr;
     }
 
-    void* sym = dlsym(handle, "createRobot");
+    void* sym = dlsym(handle, "create_robot");
 
     if (sym == nullptr){
         std::cout << dlerror() <<std::endl;
@@ -216,7 +217,7 @@ RobotBase* Arena::loadRobot(const std::string& sharedLib){
 }
 
 void Arena::setupRobot(RobotBase* robot, int index){
-    robot->set_boundaries(20,20);
+    robot->set_boundaries(arenaHeight,arenaWidth);
 
     std::string characters = "@#$%&!*^~+";
     robot->m_character = characters[index % characters.length()];
@@ -224,14 +225,13 @@ void Arena::setupRobot(RobotBase* robot, int index){
     int row, col;
      
     do{
-        row = rand();
-        col = rand();
-    }
+        row = rand() % arenaHeight;
+        col = rand() % arenaWidth;
+    } while (!cellEmpty(row, col));
 
-    while (cellEmpty(row, col));{
-        robot->move_to(row,col);
-        std::cout << "Loaded robot: " << robot->m_name << " at (" << row << ", " << col << ")\n";
-    }
+    robot->move_to(row,col);
+    std::cout << "Loaded robot: " << robot->m_name << " at (" << row << ", " << col << ")\n";
+    
 }
 
 void Arena::load_all_robots(){
@@ -251,7 +251,7 @@ void Arena::load_all_robots(){
         setupRobot(robot, robots.size());
         robots.push_back(robot);
     }
-    std::cout << "Loaded " << robots.size() << "robots\n";
+    std::cout << "Loaded " << robots.size() << " robots\n";
 }
 
 RobotBase* Arena::findRobotAt(int row, int col){

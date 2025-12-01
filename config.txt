@@ -1,4 +1,4 @@
-arena_rows 40
+arena_rows 20
 arena_cols 20
 num_mounds 10
 num_pits 6
