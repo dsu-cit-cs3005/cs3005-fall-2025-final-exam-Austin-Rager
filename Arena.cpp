@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <dlfcn.h>
 #include <filesystem>
+#include <unistd.h>
 #include "RobotBase.h"
 #include "Arena.h"
 
@@ -273,5 +274,81 @@ void Arena::cleanup(){
 
     for (const auto handle : robot_handles){
         dlclose(handle);
+    }
+}
+
+int Arena::count_living_robots(){ 
+    int counter = 0;
+    for (auto robot : robots){
+        if (robot->get_health() > 0){
+            counter += 1;
+        }
+    }
+    return counter;   
+}
+
+void Arena::run_game(){
+    round = 0;
+    while (round < maxRound){
+        std::cout << "=========== starting round " << round << " ===========";
+
+        display();
+        if (count_living_robots() <= 1){
+            declare_winner();
+            break;
+        }
+        for (const auto robot: robots){
+            process_robot_turn(robot);
+        }
+        if (watch_live == true){
+            sleep(1);
+        }
+    }
+    declare_winner();
+}
+
+void Arena::process_robot_turn(RobotBase* robot){
+    int row,col;
+    robot->get_current_location(row, col);
+
+    if (robot->get_health() == 0){
+        std::cout << robot->m_name << " is out.";
+        return;
+    }
+
+    std::cout << robot->m_name << " begins turn. \n";
+    std::cout << "Current health: " << robot->get_health() << "\n";
+    std::cout << "Current armor: " << robot->get_armor() << "\n";
+    std::cout << "Current move speed: " << robot->get_move_speed() << "\n";
+    std::cout << "Current location: (" << row << "," << col << ")\n";
+
+    int radarDirection;
+    robot->get_radar_direction(radarDirection);
+
+    std::vector<RadarObj> radarResults;
+    get_radar_results(robot, radarDirection, radarResults);
+    if (radarResults.empty()){
+        std::cout << "Found nothing.\n";
+    }
+    else{
+    std::cout << "Radar results:\n";
+    for (const auto& obj : radarResults) {
+        std::cout << "  - Found '" << obj.m_type 
+                  << "' at (" << obj.m_row << "," << obj.m_col << ")\n";
+        }
+    }
+
+    robot->process_radar_results(radarResults);
+    int shotRow, shotCol;
+    bool result = robot->get_shot_location(shotRow, shotCol);
+    if (result == true){
+        std::cout << "Shooting: " << robot->get_weapon() << "\n"; 
+        handle_shot(robot, shotRow, shotCol);
+    }
+    else{
+        int moveDirection, moveDistance;
+        robot->get_move_direction(moveDirection, moveDistance);
+        std::cout << "Moving: " << robot->m_name << "\n";
+        handle_movement(robot, moveDirection, moveDistance);
     }
 }

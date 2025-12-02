@@ -29,6 +29,7 @@ class Arena {
     void display();
     void load_all_robots();
     void cleanup();
+    void run_game();
 
     private:
     bool cellEmpty(int& row, int& col);
@@ -38,4 +39,10 @@ class Arena {
     RobotBase* loadRobot(const std::string& sharedLib);
     void setupRobot(RobotBase* robot, int index);
     RobotBase* findRobotAt(int row, int col);
+    void process_robot_turn(RobotBase* robot);
+    void get_radar_results(RobotBase* robot, int direction, std::vector<RadarObj>& results);
+    void handle_shot(RobotBase* robot, int shot_row, int shot_col);
+    void handle_movement(RobotBase* robot, int direction, int distance);
+    int count_living_robots();
+    void declare_winner();
 };
