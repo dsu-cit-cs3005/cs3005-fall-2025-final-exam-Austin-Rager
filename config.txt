@@ -1,5 +1,5 @@
-arena_rows 20
-arena_cols 20
+arena_rows 10
+arena_cols 10
 num_mounds 10
 num_pits 6
 num_flamethrowers 8

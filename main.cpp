@@ -16,7 +16,7 @@ int main(){
     arena.place_obstacles();
     arena.load_all_robots();
     arena.display();
-
+    arena.run_game();
     arena.cleanup();
 
     return 0;

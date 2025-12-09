@@ -60,12 +60,13 @@ bool Arena::cellEmpty(int& row, int& col){
     if (row < 0 || row >= arenaHeight || col < 0 || col >= arenaWidth){
         return false;
     }
-    if (grid[row][col] == '.'){
-        return true;
-    }
-    else{
+    if (grid[row][col] != '.'){
         return false;
     }
+    if (findRobotAt(row, col) != nullptr){
+        return false;
+    }
+    return true;
 }
 
 void Arena::place_obstacles(){
@@ -290,17 +291,18 @@ int Arena::count_living_robots(){
 void Arena::run_game(){
     round = 0;
     while (round < maxRound){
-        std::cout << "=========== starting round " << round << " ===========";
+        round++;
+        std::cout << "=========== starting round " << round << " ===========" << std::endl;
 
         display();
         if (count_living_robots() <= 1){
             declare_winner();
-            break;
+            return;
         }
         for (const auto robot: robots){
             process_robot_turn(robot);
         }
-        if (watch_live == true){
+        if (watch_live){
             sleep(1);
         }
     }
@@ -311,8 +313,8 @@ void Arena::process_robot_turn(RobotBase* robot){
     int row,col;
     robot->get_current_location(row, col);
 
-    if (robot->get_health() == 0){
-        std::cout << robot->m_name << " is out.";
+    if (robot->get_health() <= 0){
+        std::cout << robot->m_name << " is out.\n";
         return;
     }
 
@@ -350,5 +352,319 @@ void Arena::process_robot_turn(RobotBase* robot){
         robot->get_move_direction(moveDirection, moveDistance);
         std::cout << "Moving: " << robot->m_name << "\n";
         handle_movement(robot, moveDirection, moveDistance);
+    }
+}
+
+void Arena::declare_winner(){
+    RobotBase* winner = nullptr;
+    int highest_health = 0;
+    int living_count = 0;
+    
+    for (auto robot : robots){
+        if (robot->get_health() > 0){
+            living_count++;
+            if (robot->get_health() > highest_health){
+                highest_health = robot->get_health();
+                winner = robot;
+            }
+        }
+    }
+    std::cout << "\n========== GAME OVER ==========" << std::endl;
+    
+    if (living_count == 0){
+        std::cout << "Draw - all robots destroyed!" << std::endl;
+    }
+    else if (living_count == 1){
+        std::cout << winner->m_name << " wins!" << std::endl;
+    }
+    else{
+        // Multiple robots alive (max rounds reached)
+        std::cout << winner->m_name << " wins with " << highest_health << " health remaining!" << std::endl;
+    }
+}
+
+void Arena::handle_movement(RobotBase* robot, int direction, int distance){
+    int currentRow, currentCol;
+    robot->get_current_location(currentRow, currentCol);
+
+    if (direction == 0 || distance == 0){
+        std::cout << robot->m_name << " stays in place." << std::endl;
+        return;
+    }
+    int maxSpeed = robot->get_move_speed();
+    if (distance > maxSpeed){
+        distance = maxSpeed;
+    }
+    int delta_row = directions[direction].first;
+    int delta_col = directions[direction].second;  
+
+    for (int step = 0; step < distance; step++){
+            int next_row = currentRow + delta_row;
+            int next_col = currentCol + delta_col;
+            
+            if (next_row < 0 || next_row >= arenaHeight || 
+                next_col < 0 || next_col >= arenaWidth){
+                break;
+            }
+            
+            char cell = grid[next_row][next_col];
+            
+            if (cell == 'M'){
+                std::cout << robot->m_name << " blocked by mound." << std::endl;
+                break;
+            }
+            else if (cell == 'P'){
+                currentRow = next_row;
+                currentCol = next_col;
+                robot->disable_movement();
+                std::cout << robot->m_name << " fell into a pit!" << std::endl;
+                break;
+            }
+            else if (cell == 'F'){
+                currentRow = next_row;
+                currentCol = next_col;
+                
+                int damage = rand() % 21 + 30;
+                
+                int armor = robot->get_armor();
+                damage = damage * (100 - armor * 10) / 100;
+                
+                robot->take_damage(damage);
+                robot->reduce_armor(1);
+                
+                std::cout << robot->m_name << " hit by flamethrower! Takes " 
+                        << damage << " damage." << std::endl;
+                
+            }
+            else{
+                RobotBase* other = findRobotAt(next_row, next_col);
+                if (other != nullptr){
+                    std::cout << robot->m_name << " blocked by " << other->m_name << "." << std::endl;
+                    break;
+                }
+                
+                currentRow = next_row;
+                currentCol = next_col;
+            }
+        }
+        
+        robot->move_to(currentRow, currentCol);
+        std::cout << robot->m_name << " moves to (" << currentRow << "," << currentCol << ")" << std::endl;
+}
+
+void Arena::get_radar_results(RobotBase* robot, int direction, std::vector<RadarObj>& results){
+    results.clear();
+    
+    int robot_row, robot_col;
+    robot->get_current_location(robot_row, robot_col);
+    
+    if (direction == 0){
+        for (int dir = 1; dir <= 8; dir++){
+            int check_row = robot_row + directions[dir].first;
+            int check_col = robot_col + directions[dir].second;
+            
+            if (check_row < 0 || check_row >= arenaHeight ||
+                check_col < 0 || check_col >= arenaWidth){
+                continue;
+            }
+            
+            char cell = grid[check_row][check_col];
+            if (cell == 'M' || cell == 'P' || cell == 'F'){
+                results.push_back(RadarObj(cell, check_row, check_col));
+            }
+            
+            RobotBase* other = findRobotAt(check_row, check_col);
+            if (other != nullptr && other != robot){
+                if (other->get_health() > 0){
+                    results.push_back(RadarObj('R', check_row, check_col));
+                }
+                else{
+                    results.push_back(RadarObj('X', check_row, check_col));
+                }
+            }
+        }
+    }
+    else{
+        int delta_row = directions[direction].first;
+        int delta_col = directions[direction].second;
+        
+        int side_row, side_col;
+        if (delta_row == 0){
+            side_row = 1;
+            side_col = 0;
+        }
+        else if (delta_col == 0){
+            side_row = 0;
+            side_col = 1;
+        }
+        else{
+            side_row = 0;
+            side_col = 0;
+        }
+        
+        int current_row = robot_row;
+        int current_col = robot_col;
+        
+        while (true){
+            current_row += delta_row;
+            current_col += delta_col;
+            
+            if (current_row < 0 || current_row >= arenaHeight ||
+                current_col < 0 || current_col >= arenaWidth){
+                break;
+            }
+            
+            for (int offset = -1; offset <= 1; offset++){
+                int check_row = current_row + (side_row * offset);
+                int check_col = current_col + (side_col * offset);
+                
+                if (check_row < 0 || check_row >= arenaHeight ||
+                    check_col < 0 || check_col >= arenaWidth){
+                    continue;
+                }
+                
+                char cell = grid[check_row][check_col];
+                if (cell == 'M' || cell == 'P' || cell == 'F'){
+                    results.push_back(RadarObj(cell, check_row, check_col));
+                }
+                
+                RobotBase* other = findRobotAt(check_row, check_col);
+                if (other != nullptr && other != robot){
+                    if (other->get_health() > 0){
+                        results.push_back(RadarObj('R', check_row, check_col));
+                    }
+                    else{
+                        results.push_back(RadarObj('X', check_row, check_col));
+                    }
+                }
+            }
+        }
+    }
+}
+
+int Arena::calculate_damage(WeaponType weapon){
+    switch(weapon){
+        case flamethrower:
+            return rand() % 21 + 30;  // 30-50
+        case railgun:
+            return rand() % 11 + 10;  // 10-20
+        case grenade:
+            return rand() % 31 + 10;  // 10-40
+        case hammer:
+            return rand() % 11 + 50;  // 50-60
+        default:
+            return 10;
+    }
+}
+
+void Arena::handle_shot(RobotBase* robot, int shot_row, int shot_col){
+    int shooter_row, shooter_col;
+    robot->get_current_location(shooter_row, shooter_col);
+    
+    WeaponType weapon = robot->get_weapon();
+    
+    int delta_row = 0;
+    int delta_col = 0;
+    
+    if (shot_row > shooter_row) delta_row = 1;
+    else if (shot_row < shooter_row) delta_row = -1;
+    
+    if (shot_col > shooter_col) delta_col = 1;
+    else if (shot_col < shooter_col) delta_col = -1;
+    
+    std::vector<std::pair<int, int>> affected_cells;
+    
+    if (weapon == railgun){
+        int current_row = shooter_row + delta_row;
+        int current_col = shooter_col + delta_col;
+        
+        while (current_row >= 0 && current_row < arenaHeight &&
+               current_col >= 0 && current_col < arenaWidth){
+            affected_cells.push_back({current_row, current_col});
+            current_row += delta_row;
+            current_col += delta_col;
+        }
+    }
+    else if (weapon == flamethrower){
+        int side_row, side_col;
+        if (delta_row == 0){
+            side_row = 1;
+            side_col = 0;
+        }
+        else if (delta_col == 0){
+            side_row = 0;
+            side_col = 1;
+        }
+        else{
+            side_row = 0;
+            side_col = 0;
+        }
+        
+        int current_row = shooter_row;
+        int current_col = shooter_col;
+        
+        for (int dist = 0; dist < 4; dist++){
+            current_row += delta_row;
+            current_col += delta_col;
+            
+            for (int offset = -1; offset <= 1; offset++){
+                int check_row = current_row + (side_row * offset);
+                int check_col = current_col + (side_col * offset);
+                
+                if (check_row >= 0 && check_row < arenaHeight &&
+                    check_col >= 0 && check_col < arenaWidth){
+                    affected_cells.push_back({check_row, check_col});
+                }
+            }
+        }
+    }
+    else if (weapon == hammer){
+        if (shot_row >= 0 && shot_row < arenaHeight &&
+            shot_col >= 0 && shot_col < arenaWidth){
+            int row_diff = abs(shot_row - shooter_row);
+            int col_diff = abs(shot_col - shooter_col);
+            if (row_diff <= 1 && col_diff <= 1){
+                affected_cells.push_back({shot_row, shot_col});
+            }
+        }
+    }
+    else if (weapon == grenade){
+        if (robot->get_grenades() <= 0){
+            std::cout << robot->m_name << " is out of grenades!" << std::endl;
+            return;
+        }
+        robot->decrement_grenades();
+        
+        for (int r = shot_row - 1; r <= shot_row + 1; r++){
+            for (int c = shot_col - 1; c <= shot_col + 1; c++){
+                if (r >= 0 && r < arenaHeight && c >= 0 && c < arenaWidth){
+                    affected_cells.push_back({r, c});
+                }
+            }
+        }
+    }
+    
+    bool hit_something = false;
+    for (const auto& cell : affected_cells){
+        RobotBase* target = findRobotAt(cell.first, cell.second);
+        
+        if (target != nullptr && target != robot){
+            int damage = calculate_damage(weapon);
+            
+            int armor = target->get_armor();
+            damage = damage * (100 - armor * 10) / 100;
+            
+            target->take_damage(damage);
+            target->reduce_armor(1);
+            
+            std::cout << target->m_name << " takes " << damage 
+                      << " damage. Health: " << target->get_health() << std::endl;
+            
+            hit_something = true;
+        }
+    }
+    
+    if (!hit_something){
+        std::cout << "Shot missed!" << std::endl;
     }
 }

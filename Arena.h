@@ -45,4 +45,5 @@ class Arena {
     void handle_movement(RobotBase* robot, int direction, int distance);
     int count_living_robots();
     void declare_winner();
+    int calculate_damage(WeaponType weapon);
 };
