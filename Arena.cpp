@@ -44,6 +44,8 @@ void Arena::load_config(std::string fileName){
             std::string value;
             inFile >> value;
             watch_live = (value == "true");
+        } else if (key == "max_robots") {
+            inFile >> maxRobots;
         }
     }
 
@@ -241,6 +243,11 @@ void Arena::load_all_robots(){
     std::vector<std::string> robot_files = find_robot_files();
 
     for (const auto& filename : robot_files){
+        if (maxRobots > 0 && robots.size() >= static_cast<size_t>(maxRobots)){
+            std::cout << "Reached max robot limit of " << maxRobots << "\n";
+            break;
+        }
+
         std::string shared_lib = compileRobot(filename);
         if (shared_lib.empty()){
             continue;
@@ -497,11 +504,11 @@ void Arena::get_radar_results(RobotBase* robot, int direction, std::vector<Radar
             side_row = 0;
             side_col = 1;
         }
-        else{
-            side_row = 0;
-            side_col = 0;
+        else{  // Diagonal direction - perpendicular is (-delta_col, delta_row)
+            side_row = -delta_col;
+            side_col = delta_row;
         }
-        
+
         int current_row = robot_row;
         int current_col = robot_col;
         
@@ -595,14 +602,14 @@ void Arena::handle_shot(RobotBase* robot, int shot_row, int shot_col){
             side_row = 0;
             side_col = 1;
         }
-        else{
-            side_row = 0;
-            side_col = 0;
+        else{  // Diagonal direction - perpendicular is (-delta_col, delta_row)
+            side_row = -delta_col;
+            side_col = delta_row;
         }
-        
+
         int current_row = shooter_row;
         int current_col = shooter_col;
-        
+
         for (int dist = 0; dist < 4; dist++){
             current_row += delta_row;
             current_col += delta_col;

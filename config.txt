@@ -1,7 +1,8 @@
-arena_rows 10
-arena_cols 10
-num_mounds 10
-num_pits 6
-num_flamethrowers 8
+arena_rows 20
+arena_cols 20
+num_mounds 0
+num_pits 0
+num_flamethrowers 0
 max_rounds 100
+max_robots 3
 watch_live true 

@@ -66,8 +66,10 @@ private:
     }
 
 public:
-    Robot_Flame_e_o() : RobotBase(2, 5, flamethrower) 
+    Robot_Flame_e_o() : RobotBase(2, 5, flamethrower)
     {
+        m_name = "Flame_e_o";
+        m_character = 'F';
         std::srand(static_cast<unsigned int>(std::time(nullptr))); // Seed for random movement
     }
 

@@ -17,6 +17,7 @@ class Arena {
     int maxRound;
     int round;
     bool watch_live;
+    int maxRobots;
     std::vector<RobotBase*> robots;
     std::vector<void*> robot_handles;
     std::vector<char> robot_characters;
